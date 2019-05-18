@@ -19,9 +19,14 @@
 //////////////////////////////////////////////////////////////
 
 //Matrices
-glm::mat4	proj = glm::mat4(1.0f);
-glm::mat4	view = glm::mat4(1.0f);
-glm::mat4	model = glm::mat4(1.0f);
+glm::mat4 proj = glm::mat4(1.0f);
+glm::mat4 view = glm::mat4(1.0f);
+glm::mat4 model1 = glm::mat4(1.0f);
+glm::mat4 model2 = glm::mat4(1.0f);
+
+//Variables auxiliares
+static glm::vec3 mouseButtons = glm::vec3(false);
+static glm::vec2 mousePosition = glm::vec2(0, 0);
 
 
 //////////////////////////////////////////////////////////////
@@ -71,6 +76,25 @@ void resizeFunc(int width, int height);
 void idleFunc();
 void keyboardFunc(unsigned char key, int x, int y);
 void mouseFunc(int button, int state, int x, int y);
+void mouseMotionFunc(int x, int y);
+
+
+//Funciones auxiliares
+void orbitalCamera(int angleX, int angleY);
+void firstPersonCamera(int angleX, int angleY);
+
+void setViewMat(glm::mat4 viewMat);
+void setProjMat(glm::mat4 projMat);
+
+void setCameraPosition(glm::vec3 cameraPosition);
+
+glm::mat4 getViewMat();
+glm::mat4 getProjMat();
+glm::vec3 getCameraPosition();
+glm::vec3 getCameraRight();
+glm::vec3 getCameraUp();
+glm::vec3 getCameraBack();
+
 
 //Funciones de inicialización y destrucción
 void initContext(int argc, char** argv);
@@ -102,7 +126,6 @@ int main(int argc, char** argv)
 	glutMainLoop();
 
 	destroy();
-
 
 
 	return 0;
@@ -138,8 +161,7 @@ void initContext(int argc, char** argv)
 	glutIdleFunc(idleFunc);
 	glutKeyboardFunc(keyboardFunc);
 	glutMouseFunc(mouseFunc);
-
-
+	glutMotionFunc(mouseMotionFunc);
 }
 
 void initOGL()
@@ -150,14 +172,37 @@ void initOGL()
 	glFrontFace(GL_CCW);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glEnable(GL_CULL_FACE);
+	
+	glm::vec3 cameraPosition = glm::vec3(0.0f, 0.0f, 8.0f);
+	glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::vec3 cameraBack = glm::normalize(cameraPosition - cameraTarget);//coordenadas view
+	glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f); //coordenadas world
+	glm::vec3 cameraRight = glm::normalize(glm::cross(up, cameraBack)); //coordenadas view
+	glm::vec3 cameraUp = glm::cross(cameraBack, cameraRight); //coordenadas view
+	glm::mat4 viewMat = glm::lookAt(cameraPosition, cameraTarget, cameraUp);
+	setViewMat(viewMat);
 
+	
+	float f = 1.0f / tan(3.141592f / 6.0f);
+	float farPlane = 10.0f;
+	float nearPlane = 0.1f;
 
-	proj = glm::perspective(glm::radians(60.0f), 1.0f, 0.1f, 50.0f);
-	view = glm::mat4(1.0f);
-	view[3].z = -6;
+	glm::mat4 projMat = glm::mat4(1.0f);
+	projMat[0].x = f;
+	projMat[1].y = f;
+	projMat[2].z = (farPlane + nearPlane) / (nearPlane - farPlane);
+	projMat[2].w = -1.0f;
+	projMat[3].z = (2.0f * farPlane * nearPlane) / (nearPlane - farPlane);
+	projMat[3].w = 0.0f;
 
-
+	setViewMat(viewMat);
+	setProjMat(projMat);
+	
+	//proj = glm::perspective(glm::radians(60.0f), 1.0f, nearPlane, farPlane);
+	//view = glm::mat4(1.0f);
+	//view[3].z = -12;
 }
+
 void destroy()
 {
 	glDetachShader(program, vshader);
@@ -218,6 +263,7 @@ void initShader(const char *vname, const char *fname)
 
 
 }
+
 void initObj()
 {
 	glGenVertexArrays(1, &vao);
@@ -227,8 +273,7 @@ void initObj()
 	{
 		glGenBuffers(1, &posVBO);
 		glBindBuffer(GL_ARRAY_BUFFER, posVBO);
-		glBufferData(GL_ARRAY_BUFFER, cubeNVertex * sizeof(float) * 3,
-			cubeVertexPos, GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, cubeNVertex * sizeof(float) * 3, cubeVertexPos, GL_STATIC_DRAW);
 
 
 		glVertexAttribPointer(inPos, 3, GL_FLOAT, GL_FALSE, 0, 0);
@@ -239,8 +284,7 @@ void initObj()
 	{
 		glGenBuffers(1, &colorVBO);
 		glBindBuffer(GL_ARRAY_BUFFER, colorVBO);
-		glBufferData(GL_ARRAY_BUFFER, cubeNVertex * sizeof(float) * 3,
-			cubeVertexColor, GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, cubeNVertex * sizeof(float) * 3, cubeVertexColor, GL_STATIC_DRAW);
 		glVertexAttribPointer(inColor, 3, GL_FLOAT, GL_FALSE, 0, 0);
 		glEnableVertexAttribArray(inColor);
 	}
@@ -248,8 +292,7 @@ void initObj()
 	{
 		glGenBuffers(1, &normalVBO);
 		glBindBuffer(GL_ARRAY_BUFFER, normalVBO);
-		glBufferData(GL_ARRAY_BUFFER, cubeNVertex * sizeof(float) * 3,
-			cubeVertexNormal, GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, cubeNVertex * sizeof(float) * 3, cubeVertexNormal, GL_STATIC_DRAW);
 		glVertexAttribPointer(inNormal, 3, GL_FLOAT, GL_FALSE, 0, 0);
 		glEnableVertexAttribArray(inNormal);
 	}
@@ -257,8 +300,7 @@ void initObj()
 	{
 		glGenBuffers(1, &texCoordVBO);
 		glBindBuffer(GL_ARRAY_BUFFER, texCoordVBO);
-		glBufferData(GL_ARRAY_BUFFER, cubeNVertex * sizeof(float) * 2,
-			cubeVertexTexCoord, GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, cubeNVertex * sizeof(float) * 2, cubeVertexTexCoord, GL_STATIC_DRAW);
 		glVertexAttribPointer(inTexCoord, 2, GL_FLOAT, GL_FALSE, 0, 0);
 		glEnableVertexAttribArray(inTexCoord);
 	}
@@ -266,11 +308,10 @@ void initObj()
 
 	glGenBuffers(1, &triangleIndexVBO);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, triangleIndexVBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-		cubeNTriangleIndex * sizeof(unsigned int) * 3, cubeTriangleIndex,
-		GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, cubeNTriangleIndex * sizeof(unsigned int) * 3, cubeTriangleIndex, GL_STATIC_DRAW);
 
-	model = glm::mat4(1.0f);
+	model1 = glm::mat4(1.0f);
+	model2 = glm::mat4(1.0f);
 
 	colorTexId = loadTex("../img/color2.png");
 	emiTexId = loadTex("../img/emissive.png");
@@ -310,8 +351,6 @@ GLuint loadShader(const char *fileName, GLenum type)
 	return shader; 
 }
 
-
-
 unsigned int loadTex(const char *fileName)
 { 
 	unsigned char *map;
@@ -348,24 +387,8 @@ unsigned int loadTex(const char *fileName)
 void renderFunc()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	
-
-	glViewport(0, 0, w / 2, h );
+	glViewport(0, 0, w, h);
 	glUseProgram(program);
-	//→ pintado del objeto!!!!
-	glm::mat4 ojoIzq = glm::translate(glm::mat4(1.0), glm::vec3(0.5, 0, 0));
-	glm::mat4 modelView = ojoIzq * view * model;
-	glm::mat4 modelViewProj = proj *modelView;
-	glm::mat4 normal = glm::transpose(glm::inverse(modelView));
-	if (uModelViewMat != -1)
-		glUniformMatrix4fv(uModelViewMat, 1, GL_FALSE,
-			&(modelView[0][0]));
-	if (uModelViewProjMat != -1)
-		glUniformMatrix4fv(uModelViewProjMat, 1, GL_FALSE,
-			&(modelViewProj[0][0]));
-	if (uNormalMat != -1)
-		glUniformMatrix4fv(uNormalMat, 1, GL_FALSE,
-			&(normal[0][0]));
 
 	if (uColorTex != -1)
 	{
@@ -375,71 +398,276 @@ void renderFunc()
 	{
 		glUniform1i(uEmiTex, 1);
 	}
+
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, colorTexId);
 
 	glActiveTexture(GL_TEXTURE0 + 1);
 	glBindTexture(GL_TEXTURE_2D, emiTexId);
 
-	glBindVertexArray(vao);
-	glDrawElements(GL_TRIANGLES, cubeNTriangleIndex * 3,
-		GL_UNSIGNED_INT, (void*)0);
 
-	glViewport(w / 2, 0, w / 2, h);
-	glUseProgram(program);
-	//→ pintado del objeto!!!!
-	glm::mat4 ojoDer = glm::translate(glm::mat4(1.0), glm::vec3(-0.5, 0, 0));
-	modelView = ojoDer * view * model;
+
+	// Cubo 1
+	glm::mat4 modelView = view * model1;
+	glm::mat4 modelViewProj = proj * modelView;
+	glm::mat4 normal = glm::transpose(glm::inverse(modelView));
+
+	if (uModelViewMat != -1)
+		glUniformMatrix4fv(uModelViewMat, 1, GL_FALSE, &(modelView[0][0]));
+	if (uModelViewProjMat != -1)
+		glUniformMatrix4fv(uModelViewProjMat, 1, GL_FALSE, &(modelViewProj[0][0]));
+	if (uNormalMat != -1)
+		glUniformMatrix4fv(uNormalMat, 1, GL_FALSE, &(normal[0][0]));
+
+	glBindVertexArray(vao);
+	glDrawElements(GL_TRIANGLES, cubeNTriangleIndex * 3, GL_UNSIGNED_INT, 0);
+
+
+	// Cubo 2
+	modelView = view * model2;
 	modelViewProj = proj * modelView;
 	normal = glm::transpose(glm::inverse(modelView));
+
 	if (uModelViewMat != -1)
-		glUniformMatrix4fv(uModelViewMat, 1, GL_FALSE,
-			&(modelView[0][0]));
+		glUniformMatrix4fv(uModelViewMat, 1, GL_FALSE, &(modelView[0][0]));
 	if (uModelViewProjMat != -1)
-		glUniformMatrix4fv(uModelViewProjMat, 1, GL_FALSE,
-			&(modelViewProj[0][0]));
+		glUniformMatrix4fv(uModelViewProjMat, 1, GL_FALSE, &(modelViewProj[0][0]));
 	if (uNormalMat != -1)
-		glUniformMatrix4fv(uNormalMat, 1, GL_FALSE,
-			&(normal[0][0]));
+		glUniformMatrix4fv(uNormalMat, 1, GL_FALSE, &(normal[0][0]));
 
 	glBindVertexArray(vao);
-	glDrawElements(GL_TRIANGLES, cubeNTriangleIndex * 3,
-		GL_UNSIGNED_INT, (void*)0);
+	glDrawElements(GL_TRIANGLES, cubeNTriangleIndex * 3, GL_UNSIGNED_INT, 0);
+
 
 	
 	glutSwapBuffers();
 }
 
+
+
+
+//=======FUNCIONES AUXILIARES=======//
+
+void setViewMat(glm::mat4 viewMat)
+{
+	view = viewMat;
+}
+
+void setProjMat(glm::mat4 projMat)
+{
+	proj = projMat;
+}
+
+glm::mat4 getViewMat()
+{
+	return view;
+}
+
+glm::mat4 getProjMat()
+{
+	return proj;
+}
+
+void setCameraPosition(glm::vec3 cameraPosition)
+{
+	view[3].x = cameraPosition.x;
+	view[3].y = cameraPosition.y;
+	view[3].z = cameraPosition.z;
+}
+
+glm::vec3 getCameraPosition()
+{
+	return glm::vec3(view[3].x, view[3].y, view[3].z);
+}
+
+glm::vec3 getCameraRight()
+{
+	return glm::vec3(view[0].x, view[1].x, view[2].x);
+}
+
+glm::vec3 getCameraUp()
+{
+	return glm::vec3(view[0].y, view[1].y, view[2].y);
+}
+
+glm::vec3 getCameraBack()
+{
+	return glm::vec3(view[0].z, view[1].z, view[2].z);
+}
+
+//==================================//
+
+
+
+
+
 void resizeFunc(int width, int height)
 {
-	w = width;
-	h = height;
+	glViewport(0, 0, width, height);
+
+	glm::mat4 projMat = glm::mat4(0.0f);
+	float aspectRat;
+	float temp = tan((3.141592f * 30.0f) / 180.0f);
+	float nearPlane = 0.1f;
+	float farPlane = 50.0f;
+	aspectRat = (float)width / (float)height;
+
+	projMat[0].x = 1 / (aspectRat * temp);
+	projMat[1].y = 1 / temp;
+	projMat[2].z = -(farPlane + nearPlane) / (farPlane - nearPlane);
+	projMat[2].w = -1.0f;
+	projMat[3].z = -2.0f * farPlane * nearPlane / (farPlane - nearPlane);
+	projMat[3].w = 0.0f;
+
+	setProjMat(projMat);
 
 
-	//glViewport(width/2, 0, width/2, height);
 	glutPostRedisplay();
-
 }
 
 
 void idleFunc()
 {
-	model = glm::mat4(1.0f);
-	static float angle = 0.0f;
-	angle = (angle > 3.141592f * 2.0f) ? 0 : angle + 0.01f;
-	model = glm::rotate(model, angle, glm::vec3(1.0f, 1.0f, 0.0f));
+	static float angle1 = 0.0f;
+	static float angle2 = 0.0f;
+	static float angle3 = 0.0f;
+
+	//Cubo 1
+	glm::mat4 modelMat1(1.0f);
+	angle1 = (angle1 > 3.141592f * 2.0f) ? 0.0f : angle1 + 0.01f;
+	modelMat1 = glm::rotate(modelMat1, angle1, glm::vec3(1.0f, 1.0f, 0.0f));
+	model1 = modelMat1;
+
+	//Cubo 2
+	glm::mat4 modelMat2(1.0);
+	angle2 = (angle2 < 2.0f * 3.141592f) ? angle2 + 0.01f : 0.0f;
+	angle3 = (angle3 < 2.0f * 3.141592f) ? angle3 + 0.03f : 0.0f;
+
+	modelMat2 = glm::rotate(modelMat2, angle2, glm::vec3(0.0f, 1.0f, 0.0f));
+	modelMat2 = glm::translate(modelMat2, glm::vec3(4.0f, 0.0f, 0.0f));
+	modelMat2 = glm::rotate(modelMat2, angle3, glm::vec3(0.0f, 1.0f, 0.0f));
+	model2 = modelMat2;
+
 
 	glutPostRedisplay();
 }
 
-void keyboardFunc(unsigned char key, int x, int y){}
-void mouseFunc(int button, int state, int x, int y){}
+void keyboardFunc(unsigned char key, int x, int y)
+{
+	float amount = 0.6f;
 
+	glm::vec3 translationVec = glm::vec3(0.0f);
 
+	switch (key)
+	{
+	case 'w':
+		translationVec = getCameraBack();
+		break;
+	case 's':
+		translationVec = -getCameraBack();
+		break;
+	case 'a':
+		translationVec = getCameraRight();
+		break;
+	case 'd':
+		translationVec = -getCameraRight();
+		break;
+	}
 
+	glm::mat4 view = glm::translate(getViewMat(), translationVec * amount);
+	setViewMat(view);
+	std::cout << "Se ha pulsado la tecla " << key << std::endl << std::endl;
+}
 
+void mouseFunc(int button, int state, int x, int y)
+{
+	if (state == 0)
+	{
+		std::cout << "Se ha pulsado el botón ";
+	}
+	else
+	{
+		mouseButtons = glm::vec3(false, false, false);
+		std::cout << "Se ha soltado el botón ";
+	}
 
+	if (button == 0)
+	{
+		mouseButtons[0] = true;
+		mousePosition.x = x;
+		mousePosition.y = y;
+		std::cout << "de la izquierda del ratón " << std::endl;
+	}
 
+	if (button == 1)
+	{
+		mouseButtons[1] = true;
+		mousePosition.x = x;
+		mousePosition.y = y;
+		std::cout << "central del ratón " << std::endl;
+	}
 
+	if (button == 2)
+	{
+		mouseButtons[2] = true;
+		mousePosition.x = x;
+		mousePosition.y = y;
+		std::cout << "de la derecha del ratón " << std::endl;
+	}
 
+	std::cout << "en la posición " << x << " " << y << std::endl << std::endl;
+}
 
+void mouseMotionFunc(int x, int y)
+{
+	if (mouseButtons == glm::vec3(false, false, false))
+		return;
+
+	std::cout << "Se mueve el raton en la posición " << x << " " << y << std::endl << std::endl;
+
+	int dx = x - mousePosition.x;
+	int dy = y - mousePosition.y;
+
+	if (mouseButtons[0] == true)
+	{
+		orbitalCamera(dx, dy);
+	}
+	else if (mouseButtons[2] == true)
+	{
+		firstPersonCamera(dx, dy);
+	}
+
+	mousePosition.x = x;
+	mousePosition.y = y;
+}
+
+void orbitalCamera(int dx, int dy)
+{
+	std::cout << "Orbital camera" << std::endl;
+
+	float rotation = 0.4f;
+	float angleX = glm::radians(dx * rotation);
+	float angleY = glm::radians(dy * rotation);
+
+	glm::mat4 view = glm::rotate(getViewMat(), angleX, getCameraUp());
+	view = glm::rotate(view, angleY, getCameraRight());
+
+	setViewMat(view);
+}
+
+void firstPersonCamera(int dx, int dy)
+{
+	std::cout << "First person shooter camera" << std::endl;
+
+	float rotation = 0.2f;
+	float angleX = glm::radians(dx * rotation);
+	float angleY = glm::radians(dy * rotation);
+
+	glm::mat4 matPitch = glm::rotate(glm::mat4(1.0f), angleY, glm::vec3(1.0f, 0.0f, 0.0f));
+	glm::mat4 matYaw = glm::rotate(glm::mat4(1.0f), angleX, glm::vec3(0.0f, 1.0f, 0.0f));
+
+	glm::mat4 rotationMat = matPitch * matYaw;
+	glm::mat4 view = rotationMat * getViewMat();
+
+	setViewMat(view);
+}
