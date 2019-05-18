@@ -19,14 +19,17 @@
 //////////////////////////////////////////////////////////////
 
 //Matrices
-glm::mat4 proj = glm::mat4(1.0f);
-glm::mat4 view = glm::mat4(1.0f);
-glm::mat4 model1 = glm::mat4(1.0f);
-glm::mat4 model2 = glm::mat4(1.0f);
+static glm::mat4 proj = glm::mat4(1.0f);
+static glm::mat4 view = glm::mat4(1.0f);
+static glm::mat4 model1 = glm::mat4(1.0f);
+static glm::mat4 model2 = glm::mat4(1.0f);
 
 //Variables auxiliares
+static float farPlane = 100.0f;
+static float nearPlane = 0.1f;
+
 static glm::vec3 mouseButtons = glm::vec3(false);
-static glm::vec2 mousePosition = glm::vec2(0, 0);
+static glm::vec2 mousePosition = glm::vec2(0);
 
 
 //////////////////////////////////////////////////////////////
@@ -143,7 +146,7 @@ void initContext(int argc, char** argv)
 	glutCreateWindow("Prácticas OGL");
 
 
-	glutInitWindowSize(500, 500);
+	glutInitWindowSize(w, h);
 	glutInitWindowPosition(0, 0);
 
 	glewExperimental = GL_TRUE;
@@ -184,8 +187,6 @@ void initOGL()
 
 	
 	float f = 1.0f / tan(3.141592f / 6.0f);
-	float farPlane = 10.0f;
-	float nearPlane = 0.1f;
 
 	glm::mat4 projMat = glm::mat4(1.0f);
 	projMat[0].x = f;
@@ -502,16 +503,14 @@ glm::vec3 getCameraBack()
 
 
 void resizeFunc(int width, int height)
-{
-	glViewport(0, 0, width, height);
+{	
+	w = width;
+	h = height;
+
+	float temp = tan((3.141592f * 30.0f) / 180.0f);
+	float aspectRat = (float)width / (float)height;
 
 	glm::mat4 projMat = glm::mat4(0.0f);
-	float aspectRat;
-	float temp = tan((3.141592f * 30.0f) / 180.0f);
-	float nearPlane = 0.1f;
-	float farPlane = 50.0f;
-	aspectRat = (float)width / (float)height;
-
 	projMat[0].x = 1 / (aspectRat * temp);
 	projMat[1].y = 1 / temp;
 	projMat[2].z = -(farPlane + nearPlane) / (farPlane - nearPlane);
@@ -520,8 +519,6 @@ void resizeFunc(int width, int height)
 	projMat[3].w = 0.0f;
 
 	setProjMat(projMat);
-
-
 	glutPostRedisplay();
 }
 
