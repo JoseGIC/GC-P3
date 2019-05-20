@@ -30,6 +30,10 @@ static float nearPlane = 0.1f;
 
 static glm::vec3 mouseButtons = glm::vec3(false);
 static glm::vec2 mousePosition = glm::vec2(0);
+static glm::vec3 lightPosition = glm::vec3(0.0f, 0.0f, 5.0f);
+static glm::vec3 lightIntensity = glm::vec3(1.0f);
+
+static bool paused = false;
 
 
 //////////////////////////////////////////////////////////////
@@ -44,6 +48,10 @@ unsigned int program;
 int uModelViewMat;
 int uModelViewProjMat;
 int uNormalMat;
+int uLightPosition;
+int uLightIntensity;
+int uView;
+
 //Atributos
 int inPos;
 int inColor;
@@ -198,10 +206,6 @@ void initOGL()
 
 	setViewMat(viewMat);
 	setProjMat(projMat);
-	
-	//proj = glm::perspective(glm::radians(60.0f), 1.0f, nearPlane, farPlane);
-	//view = glm::mat4(1.0f);
-	//view[3].z = -12;
 }
 
 void destroy()
@@ -252,6 +256,10 @@ void initShader(const char *vname, const char *fname)
 	uNormalMat = glGetUniformLocation(program, "normal");
 	uModelViewMat = glGetUniformLocation(program, "modelView");
 	uModelViewProjMat = glGetUniformLocation(program, "modelViewProj");
+
+	uLightPosition = glGetUniformLocation(program, "lightPosition");
+	uLightIntensity = glGetUniformLocation(program, "lightIntensity");
+	uView = glGetUniformLocation(program, "view");
 
 	uColorTex = glGetUniformLocation(program, "colorTex");
 	uEmiTex = glGetUniformLocation(program, "emiTex");
@@ -326,8 +334,7 @@ GLuint loadShader(const char *fileName, GLenum type)
 	//Creación y compilación del Shader
 	GLuint shader;
 	shader = glCreateShader(type);
-	glShaderSource(shader, 1,
-		(const GLchar **)&source, (const GLint *)&fileLen);
+	glShaderSource(shader, 1, (const GLchar **)&source, (const GLint *)&fileLen);
 	glCompileShader(shader);
 	delete[] source;
 
@@ -390,6 +397,13 @@ void renderFunc()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glViewport(0, 0, w, h);
 	glUseProgram(program);
+
+	if (uView != -1) 
+		glUniformMatrix4fv(uView, 1, GL_FALSE, &(view[0][0]));
+	if (uLightIntensity != -1) 
+		glUniform3fv(uLightIntensity, 1, &(lightIntensity.x));
+	if (uLightPosition != -1) 
+		glUniform3fv(uLightPosition, 1, &(lightPosition.x));
 
 	if (uColorTex != -1)
 	{
@@ -529,51 +543,102 @@ void idleFunc()
 	static float angle2 = 0.0f;
 	static float angle3 = 0.0f;
 
-	//Cubo 1
-	glm::mat4 modelMat1(1.0f);
-	angle1 = (angle1 > 3.141592f * 2.0f) ? 0.0f : angle1 + 0.01f;
-	modelMat1 = glm::rotate(modelMat1, angle1, glm::vec3(1.0f, 1.0f, 0.0f));
-	model1 = modelMat1;
+	if (!paused)
+	{
+		//Cubo 1
+		glm::mat4 modelMat1(1.0f);
+		angle1 = (angle1 > 3.141592f * 2.0f) ? 0.0f : angle1 + 0.01f;
+		model1 = modelMat1;modelMat1 = glm::rotate(modelMat1, angle1, glm::vec3(1.0f, 1.0f, 0.0f));
+		model1 = modelMat1;
 
-	//Cubo 2
-	glm::mat4 modelMat2(1.0);
-	angle2 = (angle2 < 2.0f * 3.141592f) ? angle2 + 0.01f : 0.0f;
-	angle3 = (angle3 < 2.0f * 3.141592f) ? angle3 + 0.03f : 0.0f;
+		//Cubo 2
+		glm::mat4 modelMat2(1.0);
+		angle2 = (angle2 < 2.0f * 3.141592f) ? angle2 + 0.01f : 0.0f;
+		angle3 = (angle3 < 2.0f * 3.141592f) ? angle3 + 0.03f : 0.0f;
 
-	modelMat2 = glm::rotate(modelMat2, angle2, glm::vec3(0.0f, 1.0f, 0.0f));
-	modelMat2 = glm::translate(modelMat2, glm::vec3(4.0f, 0.0f, 0.0f));
-	modelMat2 = glm::rotate(modelMat2, angle3, glm::vec3(0.0f, 1.0f, 0.0f));
-	model2 = modelMat2;
-
+		modelMat2 = glm::rotate(modelMat2, angle2, glm::vec3(0.0f, 1.0f, 0.0f));
+		modelMat2 = glm::translate(modelMat2, glm::vec3(4.0f, 0.0f, 0.0f));
+		modelMat2 = glm::rotate(modelMat2, angle3, glm::vec3(0.0f, 1.0f, 0.0f));
+		model2 = modelMat2;
+	}
 
 	glutPostRedisplay();
 }
 
 void keyboardFunc(unsigned char key, int x, int y)
 {
-	float amount = 0.6f;
+	float amount = 0.1f;
 
 	glm::vec3 translationVec = glm::vec3(0.0f);
 
 	switch (key)
 	{
+	case 'p':
+		//Pausa movimiento de los cubos
+		paused = !paused;
+		break;
+
+
 	case 'w':
+		//Camara hacia delante
 		translationVec = getCameraBack();
 		break;
 	case 's':
+		//Camara hacia detras
 		translationVec = -getCameraBack();
 		break;
 	case 'a':
+		//Camara hacia izquierda
 		translationVec = getCameraRight();
 		break;
 	case 'd':
+		//Camara hacia derecha
 		translationVec = -getCameraRight();
+		break;
+
+
+	case 'i':
+		//Luz hacia delante
+		lightPosition += glm::vec3(0.0f, 0.0f, -1.0f);
+		break;
+	case 'k':
+		//Luz hacia atras
+		lightPosition += glm::vec3(0.0f, 0.0f, 1.0f);
+		break;
+	case 'l':
+		//Luz hacia derecha
+		lightPosition += glm::vec3(1.0f, 0.0f, 0.0f);
+		break;
+	case 'j':
+		//Luz hacia izquierda
+		lightPosition += glm::vec3(-1.0f, 0.0f, 0.0f);
+		break;
+	case 'm':
+		//Luz hacia arriba
+		lightPosition += glm::vec3(0.0f, 1.0f, 0.0f);
+		break;
+	case 'n':
+		//Luz hacia abajo
+		lightPosition += glm::vec3(0.0f, -1.0f, 0.0f);
+		break;
+	
+
+	case '+':
+		//Luz mas intensa
+		if (lightIntensity.x < 1.0f)
+			lightIntensity += glm::vec3(0.1f, 0.1f, 0.1f);
+		break;
+	case '-':
+		//Luz menos intensa
+		if (lightIntensity.x > 0.0f)
+			lightIntensity -= glm::vec3(0.1f, 0.1f, 0.1f);
 		break;
 	}
 
+	std::cout << "Se ha pulsado la tecla " << key << std::endl << std::endl;
 	glm::mat4 view = glm::translate(getViewMat(), translationVec * amount);
 	setViewMat(view);
-	std::cout << "Se ha pulsado la tecla " << key << std::endl << std::endl;
+	glutPostRedisplay();
 }
 
 void mouseFunc(int button, int state, int x, int y)
