@@ -7,6 +7,10 @@ in vec3 pos;
 in vec3 norm;
 in vec2 texCoord;
 
+uniform mat4 view;
+uniform vec3 lightIntensity;
+uniform vec3 lightPosition;
+
 uniform sampler2D colorTex;
 uniform sampler2D emiTex;
 
@@ -20,9 +24,9 @@ vec3 Ke;
 
 //Propiedades de la luz
 vec3 Ia = vec3 (0.3);
-vec3 Id = vec3 (1.0);
-vec3 Is = vec3 (1.0);
-vec3 lpos = vec3 (0.0); 
+vec3 Id = lightIntensity;
+vec3 Is = lightIntensity;
+vec3 lpos = (view * vec4(lightPosition, 1)).xyz;
 
 vec3 shade();
 
@@ -44,13 +48,13 @@ vec3 shade()
 	c = Ia * Ka;
 
 	vec3 L = normalize (lpos - pos);
-	vec3 diffuse = Id * Kd * dot (L,N);
+	vec3 diffuse = Id * Kd * dot (L, N);
 	c += clamp(diffuse, 0.0, 1.0);
 	
 	vec3 V = normalize (-pos);
-	vec3 R = normalize (reflect (-L,N));
-	float factor = max (dot (R,V), 0.01);
-	vec3 specular = Is*Ks*pow(factor,alpha);
+	vec3 R = normalize (reflect (-L, N));
+	float factor = max (dot (R, V), 0.01);
+	vec3 specular = Is * Ks * pow(factor, alpha);
 	c += clamp(specular, 0.0, 1.0);
 
 	c+=Ke;
