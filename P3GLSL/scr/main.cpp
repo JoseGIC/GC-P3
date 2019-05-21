@@ -556,8 +556,10 @@ void idleFunc()
 		angle2 = (angle2 < 2.0f * 3.141592f) ? angle2 + 0.01f : 0.0f;
 		angle3 = (angle3 < 2.0f * 3.141592f) ? angle3 + 0.03f : 0.0f;
 
+		//Orbita
 		modelMat2 = glm::rotate(modelMat2, angle2, glm::vec3(0.0f, 1.0f, 0.0f));
 		modelMat2 = glm::translate(modelMat2, glm::vec3(4.0f, 0.0f, 0.0f));
+		//Rotacion
 		modelMat2 = glm::rotate(modelMat2, angle3, glm::vec3(0.0f, 1.0f, 0.0f));
 		model2 = modelMat2;
 	}
@@ -655,7 +657,7 @@ void mouseFunc(int button, int state, int x, int y)
 
 	if (button == 0)
 	{
-		mouseButtons[0] = true;
+		mouseButtons = glm::vec3(true, false, false);
 		mousePosition.x = x;
 		mousePosition.y = y;
 		std::cout << "de la izquierda del ratón " << std::endl;
@@ -663,7 +665,7 @@ void mouseFunc(int button, int state, int x, int y)
 
 	if (button == 1)
 	{
-		mouseButtons[1] = true;
+		mouseButtons = glm::vec3(false, true, false);
 		mousePosition.x = x;
 		mousePosition.y = y;
 		std::cout << "central del ratón " << std::endl;
@@ -671,7 +673,7 @@ void mouseFunc(int button, int state, int x, int y)
 
 	if (button == 2)
 	{
-		mouseButtons[2] = true;
+		mouseButtons = glm::vec3(false, false, true);
 		mousePosition.x = x;
 		mousePosition.y = y;
 		std::cout << "de la derecha del ratón " << std::endl;
