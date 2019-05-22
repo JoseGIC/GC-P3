@@ -34,6 +34,7 @@ static glm::vec3 lightPosition = glm::vec3(0.0f, 0.0f, 5.0f);
 static glm::vec3 lightIntensity = glm::vec3(1.0f);
 
 static bool paused = false;
+static bool dualView = false;
 
 
 //////////////////////////////////////////////////////////////
@@ -395,7 +396,15 @@ unsigned int loadTex(const char *fileName)
 void renderFunc()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glViewport(0, 0, w, h);
+	if (dualView)
+	{
+		glViewport(0, h / 4, w / 2, h / 2);
+	}
+	else
+	{
+		glViewport(0, 0, w, h);
+	}
+	
 	glUseProgram(program);
 
 	if (uView != -1) 
@@ -423,7 +432,16 @@ void renderFunc()
 
 
 	// Cubo 1
-	glm::mat4 modelView = view * model1;
+	glm::mat4 modelView;
+	if (dualView)
+	{
+		glm::mat4 ojoIzq = glm::translate(glm::mat4(1.0), glm::vec3(0.5, 0, 0));
+		modelView = ojoIzq * view * model1;
+	}
+	else
+	{
+		 modelView = view * model1;
+	}
 	glm::mat4 modelViewProj = proj * modelView;
 	glm::mat4 normal = glm::transpose(glm::inverse(modelView));
 
@@ -439,7 +457,15 @@ void renderFunc()
 
 
 	// Cubo 2
-	modelView = view * model2;
+	if (dualView)
+	{
+		glm::mat4 ojoIzq = glm::translate(glm::mat4(1.0), glm::vec3(0.5, 0, 0));
+		modelView = ojoIzq * view * model2;
+	}
+	else
+	{
+		modelView = view * model2;
+	}
 	modelViewProj = proj * modelView;
 	normal = glm::transpose(glm::inverse(modelView));
 
@@ -453,7 +479,40 @@ void renderFunc()
 	glBindVertexArray(vao);
 	glDrawElements(GL_TRIANGLES, cubeNTriangleIndex * 3, GL_UNSIGNED_INT, 0);
 
+	if (dualView) {
+		glViewport(w / 2, h / 4, w / 2, h / 2);
+		glUseProgram(program);
 
+		glm::mat4 ojoDer = glm::translate(glm::mat4(1.0), glm::vec3(-0.5, 0, 0));
+		modelView = ojoDer * view * model1;
+		modelViewProj = proj * modelView;
+		normal = glm::transpose(glm::inverse(modelView));
+
+		if (uModelViewMat != -1)
+			glUniformMatrix4fv(uModelViewMat, 1, GL_FALSE, &(modelView[0][0]));
+		if (uModelViewProjMat != -1)
+			glUniformMatrix4fv(uModelViewProjMat, 1, GL_FALSE, &(modelViewProj[0][0]));
+		if (uNormalMat != -1)
+			glUniformMatrix4fv(uNormalMat, 1, GL_FALSE, &(normal[0][0]));
+
+		glBindVertexArray(vao);
+		glDrawElements(GL_TRIANGLES, cubeNTriangleIndex * 3, GL_UNSIGNED_INT, 0);
+
+		ojoDer = glm::translate(glm::mat4(1.0), glm::vec3(0.5, 0, 0));
+		modelView = ojoDer * view * model2;
+		modelViewProj = proj * modelView;
+		normal = glm::transpose(glm::inverse(modelView));
+
+		if (uModelViewMat != -1)
+			glUniformMatrix4fv(uModelViewMat, 1, GL_FALSE, &(modelView[0][0]));
+		if (uModelViewProjMat != -1)
+			glUniformMatrix4fv(uModelViewProjMat, 1, GL_FALSE, &(modelViewProj[0][0]));
+		if (uNormalMat != -1)
+			glUniformMatrix4fv(uNormalMat, 1, GL_FALSE, &(normal[0][0]));
+
+		glBindVertexArray(vao);
+		glDrawElements(GL_TRIANGLES, cubeNTriangleIndex * 3, GL_UNSIGNED_INT, 0);
+	}
 	
 	glutSwapBuffers();
 }
@@ -582,7 +641,10 @@ void keyboardFunc(unsigned char key, int x, int y)
 		//Pausa movimiento de los cubos
 		paused = !paused;
 		break;
-
+	case '2':
+		//Pausa movimiento de los cubos
+		dualView = !dualView;
+		break;
 
 	case 'w':
 		//Camara hacia delante
