@@ -610,7 +610,7 @@ void idleFunc()
 		//Cubo 1
 		glm::mat4 modelMat1(1.0f);
 		angle1 = (angle1 > 3.141592f * 2.0f) ? 0.0f : angle1 + amount1;
-		model1 = modelMat1;modelMat1 = glm::rotate(modelMat1, angle1, glm::vec3(1.0f, 1.0f, 0.0f));
+		modelMat1 = glm::rotate(modelMat1, angle1, glm::vec3(1.0f, 1.0f, 0.0f));
 		model1 = modelMat1;
 
 		//Cubo 2
