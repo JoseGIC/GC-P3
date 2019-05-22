@@ -543,18 +543,21 @@ void idleFunc()
 	static float angle2 = 0.0f;
 	static float angle3 = 0.0f;
 
+	static float amount1 = 0.01f;
+	static float amount2 = 0.03f;
+
 	if (!paused)
 	{
 		//Cubo 1
 		glm::mat4 modelMat1(1.0f);
-		angle1 = (angle1 > 3.141592f * 2.0f) ? 0.0f : angle1 + 0.01f;
+		angle1 = (angle1 > 3.141592f * 2.0f) ? 0.0f : angle1 + amount1;
 		model1 = modelMat1;modelMat1 = glm::rotate(modelMat1, angle1, glm::vec3(1.0f, 1.0f, 0.0f));
 		model1 = modelMat1;
 
 		//Cubo 2
 		glm::mat4 modelMat2(1.0);
-		angle2 = (angle2 < 2.0f * 3.141592f) ? angle2 + 0.01f : 0.0f;
-		angle3 = (angle3 < 2.0f * 3.141592f) ? angle3 + 0.03f : 0.0f;
+		angle2 = (angle2 < 2.0f * 3.141592f) ? angle2 + amount1 : 0.0f;
+		angle3 = (angle3 < 2.0f * 3.141592f) ? angle3 + amount2 : 0.0f;
 
 		//Orbita
 		modelMat2 = glm::rotate(modelMat2, angle2, glm::vec3(0.0f, 1.0f, 0.0f));
